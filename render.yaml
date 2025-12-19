@@ -14,6 +14,7 @@ services:
     region: singapore                     # or 'singapore' if you prefer closer region
     plan: free
     dockerfilePath: backend/Dockerfile # uses your provided Dockerfile
+    rootDir: backend
     autoDeploy: true
     healthCheckPath: /actuator/health
 
