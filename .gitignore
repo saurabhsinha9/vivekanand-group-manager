@@ -1,0 +1,28 @@
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.DS_Store
+
+# Java / Spring Boot
+backend/upload/
+backend/target/
+backend/.idea/
+backend/.project
+backend/.classpath
+backend/*.iml
+backend/.settings/
+backend/*.iws
+backend/*.ipr
+
+# Logs
+*.log
+**/logs/
+**/*.log
+
+# OS junk
+Thumbs.db
+.DS_Store
+``
