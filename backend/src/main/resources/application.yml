@@ -1,0 +1,108 @@
+
+# -------------- Common settings (applies to all profiles) --------------
+spring:
+  application:
+    name: ${SPRING_APP_NAME}
+  servlet:
+    multipart:
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE}
+
+server:
+  port: ${PORT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_ENABLED}
+  swagger-ui:
+    path: ${SWAGGER_UI_PATH}
+
+# Mail (all env-driven)
+mail:
+  host: ${MAIL_HOST}
+  port: ${MAIL_PORT}
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+  properties:
+    mail:
+      smtp:
+        auth: ${MAIL_SMTP_AUTH}
+        starttls:
+          enable: ${MAIL_SMTP_STARTTLS_ENABLE}
+
+# CORS (env-driven list, e.g., "http://localhost:3000,http://localhost:5173")
+cors:
+  allowedOrigins: ${CORS_ALLOWED_ORIGINS}
+
+# JWT (env-driven)
+jwt:
+  issuer: ${JWT_ISSUER}
+  secret: ${JWT_SECRET}
+  expirationMinutes: ${JWT_EXP_MINUTES}
+
+# Storage (env-driven)
+storage:
+  uploadDir: ${UPLOAD_DIR}
+  maxFileSizeMb: ${UPLOAD_MAX_MB}
+
+# WhatsApp integration (env-driven)
+whatsapp:
+  provider: ${WA_PROVIDER}
+  meta:
+    phoneNumberId: ${WA_META_PHONE_ID}
+    accessToken: ${WA_META_ACCESS_TOKEN}
+  twilio:
+    accountSid: ${TWILIO_SID}
+    authToken: ${TWILIO_TOKEN}
+    whatsappFrom: ${TWILIO_WHATSAPP_FROM}
+
+# -------------- Production profile (PostgreSQL) --------------
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL}                 # jdbc:postgresql://HOST:PORT/DB
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO}    # e.g., validate
+    show-sql: ${JPA_SHOW_SQL}
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL}
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+
+# -------------- Development profile (MySQL) --------------
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: ${DB_URL}                 # jdbc:mysql://HOST:PORT/DB?params
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO}    # e.g., update
+    show-sql: ${JPA_SHOW_SQL}
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL}
+        dialect: org.hibernate.dialect.MySQLDialect
