@@ -25,8 +25,6 @@ services:
         value: Vivekanand-Manager
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: PORT
-        value: "8080"
 
       # --- File upload config in Spring (limit only) ---
       - key: MULTIPART_MAX_FILE_SIZE
