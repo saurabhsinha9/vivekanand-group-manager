@@ -7,6 +7,17 @@ spring:
     multipart:
       max-file-size: ${MULTIPART_MAX_FILE_SIZE}
       max-request-size: ${MULTIPART_MAX_REQUEST_SIZE}
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE}
 
 server:
   port: ${PORT}
@@ -22,19 +33,6 @@ springdoc:
     enabled: ${SPRINGDOC_API_ENABLED}
   swagger-ui:
     path: ${SWAGGER_UI_PATH}
-
-# Mail (all env-driven)
-mail:
-  host: ${MAIL_HOST}
-  port: ${MAIL_PORT}
-  username: ${MAIL_USERNAME}
-  password: ${MAIL_PASSWORD}
-  properties:
-    mail:
-      smtp:
-        auth: ${MAIL_SMTP_AUTH}
-        starttls:
-          enable: ${MAIL_SMTP_STARTTLS_ENABLE}
 
 # CORS (env-driven list, e.g., "http://localhost:3000,http://localhost:5173")
 cors:
@@ -84,7 +82,6 @@ spring:
         format_sql: ${HIBERNATE_FORMAT_SQL}
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-
 # -------------- Development profile (MySQL) --------------
 ---
 spring:
@@ -101,8 +98,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO}    # e.g., update
-    show-sql: ${JPA_SHOW_SQL}
+    show-sql    show-sql: ${JPA_SHOW_SQL}
     properties:
       hibernate:
         format_sql: ${HIBERNATE_FORMAT_SQL}
-        dialect: org.hibernate.dialect.MySQLDialect
