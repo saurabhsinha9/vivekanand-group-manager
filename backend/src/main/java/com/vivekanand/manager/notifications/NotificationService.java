@@ -3,8 +3,6 @@ package com.vivekanand.manager.notifications;
 
 import com.vivekanand.manager.members.MemberRepository;
 import org.springframework.core.env.Environment;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
