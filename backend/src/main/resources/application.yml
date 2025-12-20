@@ -18,6 +18,11 @@ spring:
           auth: ${MAIL_SMTP_AUTH}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE}
+email:
+  provider: ${EMAIL_PROVIDER}   # 'smtp' or 'php'
+  api:
+    url: ${EMAIL_API_URL}
+    key: ${EMAIL_API_KEY}
 
 server:
   port: ${PORT}

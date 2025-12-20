@@ -84,6 +84,14 @@ services:
       - key: MAIL_SMTP_STARTTLS_ENABLE
         value: ""
 
+      # --- Email HTTP API URL & KEY
+      - key: EMAIL_PROVIDER
+        value: "http"
+      - key: EMAIL_API_URL
+        value: ""
+      - key: EMAIL_API_KEY
+        value: ""
+
       # --- JPA & Hibernate (prod profile) ---
       - key: JPA_DDL_AUTO
         value: validate        # use 'update' temporarily if you need auto-creation

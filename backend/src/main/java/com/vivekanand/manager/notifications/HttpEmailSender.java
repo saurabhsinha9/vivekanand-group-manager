@@ -23,8 +23,8 @@ public class HttpEmailSender implements EmailSender {
 
     @Override
     public void send(String to, String subject, String bodyHtml) {
-        String url   = env.getProperty("email.provider.url");
-        String apiKey= env.getProperty("email.provider.key");
+        String url   = env.getProperty("email.api.url");
+        String apiKey= env.getProperty("email.api.key");
 
         if (apiKey == null || apiKey.isBlank()) {
             System.err.println("HTTP email: missing API_KEY");
