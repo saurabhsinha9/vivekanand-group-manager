@@ -7,17 +7,6 @@ spring:
     multipart:
       max-file-size: ${MULTIPART_MAX_FILE_SIZE}
       max-request-size: ${MULTIPART_MAX_REQUEST_SIZE}
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: ${MAIL_SMTP_AUTH}
-          starttls:
-            enable: ${MAIL_SMTP_STARTTLS_ENABLE}
 email:
   provider: ${EMAIL_PROVIDER}   # 'smtp' or 'php'
   api:

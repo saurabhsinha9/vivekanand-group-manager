@@ -70,20 +70,6 @@ services:
       - key: TWILIO_WHATSAPP_FROM
         value: ""
 
-      # --- Mail (optional; set if you enable SMTP) ---
-      - key: MAIL_HOST
-        value: ""
-      - key: MAIL_PORT
-        value: ""
-      - key: MAIL_USERNAME
-        value: ""
-      - key: MAIL_PASSWORD
-        value: ""
-      - key: MAIL_SMTP_AUTH
-        value: ""
-      - key: MAIL_SMTP_STARTTLS_ENABLE
-        value: ""
-
       # --- Email HTTP API URL & KEY
       - key: EMAIL_PROVIDER
         value: "http"
