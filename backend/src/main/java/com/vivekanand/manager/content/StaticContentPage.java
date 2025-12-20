@@ -22,12 +22,8 @@ public class StaticContentPage {
     @Column(nullable = false, length = 256)
     private String title;
 
-    // Published content
-    @Lob
     private String publishedContent;
 
-    // Draft content (editable)
-    @Lob
     private String draftContent;
 
     @Enumerated(EnumType.STRING)
