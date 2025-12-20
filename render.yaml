@@ -19,96 +19,96 @@ services:
     healthCheckPath: /actuator/health
 
     # Runtime env vars — no secrets embedded. Fill real values in Render Dashboard.
-    envVars:
-      # --- Spring basics ---
-      - key: SPRING_APP_NAME
-        value: Vivekanand-Manager
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-
-      # --- File upload config in Spring (limit only) ---
-      - key: MULTIPART_MAX_FILE_SIZE
-        value: 100MB
-      - key: MULTIPART_MAX_REQUEST_SIZE
-        value: 100MB
-
-      # --- Swagger/OpenAPI ---
-      - key: SPRINGDOC_API_ENABLED
-        value: "true"
-      - key: SWAGGER_UI_PATH
-        value: /swagger-ui.html
-
-      # --- CORS (set this to your final frontend URL on GitHub Pages) ---
-      - key: CORS_ALLOWED_ORIGINS
-        value: https://saurabhsinha9.github.io/vivekanand-group-manager
-
-      # --- JWT (set real values in dashboard; DO NOT COMMIT) ---
-      - key: JWT_ISSUER
-        value: vivekanand-manager
-      - key: JWT_SECRET
-        value: "<SET-IN-RENDER-DASHBOARD>"  # e.g., a 64+ char random string
-      - key: JWT_EXP_MINUTES
-        value: "1440" # 24 hours
-
-      # --- Storage fallback (local dir is ephemeral in Render; use Cloudinary for prod) ---
-      - key: UPLOAD_DIR
-        value: /app/uploads
-      - key: UPLOAD_MAX_MB
-        value: "100"
-
-      # --- WhatsApp providers (optional; leave as 'none' or fill in later) ---
-      - key: WA_PROVIDER
-        value: "none"
-      - key: WA_META_PHONE_ID
-        value: ""
-      - key: WA_META_ACCESS_TOKEN
-        value: ""
-      - key: TWILIO_SID
-        value: ""
-      - key: TWILIO_TOKEN
-        value: ""
-      - key: TWILIO_WHATSAPP_FROM
-        value: ""
-
-      # --- Email HTTP API URL & KEY
-      - key: EMAIL_PROVIDER
-        value: "http"
-      - key: EMAIL_API_URL
-        value: ""
-      - key: EMAIL_API_KEY
-        value: ""
-
-      # --- JPA & Hibernate (prod profile) ---
-      - key: JPA_DDL_AUTO
-        value: validate        # use 'update' temporarily if you need auto-creation
-      - key: JPA_SHOW_SQL
-        value: "false"
-      - key: HIBERNATE_FORMAT_SQL
-        value: "true"
-
-      # --- Cloudinary (free storage for images/videos/PDFs) ---
-      - key: CLOUDINARY_CLOUD_NAME
-        value: "<SET-IN-RENDER-DASHBOARD>"
-      - key: CLOUDINARY_API_KEY
-        value: "<SET-IN-RENDER-DASHBOARD>"
-      - key: CLOUDINARY_API_SECRET
-        value: "<SET-IN-RENDER-DASHBOARD>"
-      - key: CLOUDINARY_FOLDER
-        value: "vivekanand_manager"
-
-      # --- Database: map from attached Render Postgres (safe) ---
-      - key: DB_URL
-        fromDatabase:
-          name: vivekanand-manager-db
-          property: connectionString
-      - key: DB_USER
-        fromDatabase:
-          name: vivekanand-manager-db
-          property: user
-      - key: DB_PASS
-        fromDatabase:
-          name: vivekanand-manager-db
-          property: password
+#    envVars:
+#      # --- Spring basics ---
+#      - key: SPRING_APP_NAME
+#        value: Vivekanand-Manager
+#      - key: SPRING_PROFILES_ACTIVE
+#        value: prod
+#
+#      # --- File upload config in Spring (limit only) ---
+#      - key: MULTIPART_MAX_FILE_SIZE
+#        value: 100MB
+#      - key: MULTIPART_MAX_REQUEST_SIZE
+#        value: 100MB
+#
+#      # --- Swagger/OpenAPI ---
+#      - key: SPRINGDOC_API_ENABLED
+#        value: "true"
+#      - key: SWAGGER_UI_PATH
+#        value: /swagger-ui.html
+#
+#      # --- CORS (set this to your final frontend URL on GitHub Pages) ---
+#      - key: CORS_ALLOWED_ORIGINS
+#        value: https://saurabhsinha9.github.io/vivekanand-group-manager
+#
+#      # --- JWT (set real values in dashboard; DO NOT COMMIT) ---
+#      - key: JWT_ISSUER
+#        value: vivekanand-manager
+#      - key: JWT_SECRET
+#        value: "<SET-IN-RENDER-DASHBOARD>"  # e.g., a 64+ char random string
+#      - key: JWT_EXP_MINUTES
+#        value: "1440" # 24 hours
+#
+#      # --- Storage fallback (local dir is ephemeral in Render; use Cloudinary for prod) ---
+#      - key: UPLOAD_DIR
+#        value: /app/uploads
+#      - key: UPLOAD_MAX_MB
+#        value: "100"
+#
+#      # --- WhatsApp providers (optional; leave as 'none' or fill in later) ---
+#      - key: WA_PROVIDER
+#        value: "none"
+#      - key: WA_META_PHONE_ID
+#        value: ""
+#      - key: WA_META_ACCESS_TOKEN
+#        value: ""
+#      - key: TWILIO_SID
+#        value: ""
+#      - key: TWILIO_TOKEN
+#        value: ""
+#      - key: TWILIO_WHATSAPP_FROM
+#        value: ""
+#
+#      # --- Email HTTP API URL & KEY
+#      - key: EMAIL_PROVIDER
+#        value: "http"
+#      - key: EMAIL_API_URL
+#        value: ""
+#      - key: EMAIL_API_KEY
+#        value: ""
+#
+#      # --- JPA & Hibernate (prod profile) ---
+#      - key: JPA_DDL_AUTO
+#        value: validate        # use 'update' temporarily if you need auto-creation
+#      - key: JPA_SHOW_SQL
+#        value: "false"
+#      - key: HIBERNATE_FORMAT_SQL
+#        value: "true"
+#
+#      # --- Cloudinary (free storage for images/videos/PDFs) ---
+#      - key: CLOUDINARY_CLOUD_NAME
+#        value: "<SET-IN-RENDER-DASHBOARD>"
+#      - key: CLOUDINARY_API_KEY
+#        value: "<SET-IN-RENDER-DASHBOARD>"
+#      - key: CLOUDINARY_API_SECRET
+#        value: "<SET-IN-RENDER-DASHBOARD>"
+#      - key: CLOUDINARY_FOLDER
+#        value: "vivekanand_manager"
+#
+#      # --- Database: map from attached Render Postgres (safe) ---
+#      - key: DB_URL
+#        fromDatabase:
+#          name: vivekanand-manager-db
+#          property: connectionString
+#      - key: DB_USER
+#        fromDatabase:
+#          name: vivekanand-manager-db
+#          property: user
+#      - key: DB_PASS
+#        fromDatabase:
+#          name: vivekanand-manager-db
+#          property: password
 
 databases:
   - name: vivekanand-manager-db
