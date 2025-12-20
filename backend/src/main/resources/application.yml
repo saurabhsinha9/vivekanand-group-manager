@@ -39,9 +39,21 @@ jwt:
   expirationMinutes: ${JWT_EXP_MINUTES}
 
 # Storage (env-driven)
+#storage:
+#  uploadDir: ${UPLOAD_DIR}
+#  maxFileSizeMb: ${UPLOAD_MAX_MB}
+
+
 storage:
+  provider: ${STORAGE_PVR}          # local or cloudinary
   uploadDir: ${UPLOAD_DIR}
   maxFileSizeMb: ${UPLOAD_MAX_MB}
+
+cloudinary:
+  cloudName: ${CLOUDINARY_CLOUD_NAME}            # leave empty locally
+  apiKey: ${CLOUDINARY_API_KEY}
+  apiSecret: ${CLOUDINARY_API_SECRET}
+  folder: ${CLOUDINARY_FOLDER}    # logical folder in Cloudinary
 
 # WhatsApp integration (env-driven)
 whatsapp:
