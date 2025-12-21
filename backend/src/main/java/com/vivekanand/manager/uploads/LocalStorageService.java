@@ -79,5 +79,16 @@ public class LocalStorageService implements StorageService {
         // local: storagePath is a filesystem path
         return new FileSystemResource(upload.getStoragePath());
     }
+
+    @Override
+    public void delete(Upload upload) {
+        try {
+            Path path = Paths.get(upload.getStoragePath());
+            Files.deleteIfExists(path);
+            repo.delete(upload);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete local file", e);
+        }
+    }
 }
 

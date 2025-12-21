@@ -69,8 +69,6 @@ public class CloudinaryStorageService implements StorageService {
             u.setProviderId(publicId);
             u.setStoragePath(secureUrl);
             u.setUploadedAt(Instant.now());
-
-            // If you prefer to keep both, you can add extra fields later (publicId, etc.)
             return repo.save(u);
         } catch (Exception e) {
             throw new RuntimeException("Cloudinary upload failed", e);
@@ -90,5 +88,17 @@ public class CloudinaryStorageService implements StorageService {
     @Override
     public Resource loadAsResource(Upload upload) {
         throw new UnsupportedOperationException("Cloudinary resources must be accessed via URL");
+    }
+
+    @Override
+    public void delete(Upload upload) {
+        try {
+            if (upload.getProviderId() != null) {
+                cloudinary.uploader().destroy(upload.getProviderId(), ObjectUtils.emptyMap());
+            }
+            repo.delete(upload);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete Cloudinary file", e);
+        }
     }
 }

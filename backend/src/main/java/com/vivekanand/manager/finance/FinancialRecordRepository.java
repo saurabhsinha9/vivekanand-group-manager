@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface FinancialRecordRepository extends JpaRepository<FinancialRecord, Long> {
     List<FinancialRecord> findByEventId(Long eventId);
+
+    void deleteByUploadId(Long uploadId);
 }

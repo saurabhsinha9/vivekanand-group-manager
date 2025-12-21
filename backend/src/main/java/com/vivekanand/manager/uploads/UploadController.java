@@ -1,6 +1,11 @@
 
 package com.vivekanand.manager.uploads;
 
+import com.vivekanand.manager.finance.FinancialRecordRepository;
+import com.vivekanand.manager.gallery.AlbumRepository;
+import com.vivekanand.manager.gallery.GalleryItemRepository;
+import com.vivekanand.manager.posts.MediaAttachmentRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -21,10 +26,18 @@ import java.net.URL;
 public class UploadController {
     private final UploadRepository repo;
     private final StorageService storage;
+    private final MediaAttachmentRepository mediaRepo;
+    private final FinancialRecordRepository finRecRepo;
+    private final GalleryItemRepository galItemRepo;
+    private final AlbumRepository albRepo;
 
-    public UploadController(UploadRepository r, StorageService s) {
-        repo = r;
-        storage = s;
+    public UploadController(UploadRepository repo, StorageService storage, MediaAttachmentRepository mediaRepo, FinancialRecordRepository finRecRepo, GalleryItemRepository galItemRepo, AlbumRepository albRepo) {
+        this.repo = repo;
+        this.storage = storage;
+        this.mediaRepo = mediaRepo;
+        this.finRecRepo = finRecRepo;
+        this.galItemRepo = galItemRepo;
+        this.albRepo = albRepo;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -69,6 +82,19 @@ public class UploadController {
     public Page<Upload> page(@RequestParam(defaultValue="0") int page,
                              @RequestParam(defaultValue="20") int size) {
         return repo.findAll(PageRequest.of(page, size, Sort.by("uploadedAt").descending()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MEMBER')")
+    @Transactional
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        Upload u = repo.findById(id).orElseThrow();
+        mediaRepo.deleteByUploadId(id);
+        finRecRepo.deleteByUploadId(id);
+        galItemRepo.deleteByUploadId(id);
+        albRepo.deleteByCoverUploadId(id);
+        storage.delete(u);
+        return ResponseEntity.noContent().build();
     }
 
 

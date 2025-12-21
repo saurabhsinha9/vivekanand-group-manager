@@ -8,4 +8,6 @@ public interface GalleryItemRepository extends JpaRepository<GalleryItem, Long> 
     Page<GalleryItem> findByAlbumIdAndDeletedAtIsNull(Long albumId, Pageable pageable);
 
     Page<GalleryItem> findByAlbumIdAndVisibleTrueAndDeletedAtIsNull(Long albumId, Pageable pageable);
+
+    void deleteByUploadId(Long uploadId);
 }

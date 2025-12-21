@@ -10,5 +10,5 @@ public interface StorageService {
     Upload store(MultipartFile file);
     Optional<String> downloadUrl(Upload upload);
     Resource loadAsResource(Upload upload);
-
+    void delete(Upload upload);
 }
