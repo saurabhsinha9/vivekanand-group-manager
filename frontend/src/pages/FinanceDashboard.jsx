@@ -134,7 +134,23 @@ export default function FinanceDashboard() {
                     <TableCell>{r.description}</TableCell>
                     <TableCell>{r.amount}</TableCell>
                     <TableCell>{r.timestamp}</TableCell>
-                    <TableCell>{r.uploadId ? <Button onClick={async()=>{ const res = await api.get(`/uploads/${r.uploadId}`, { responseType:'blob' }); const blob = new Blob([res.data]); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`receipt_${r.uploadId}`; a.click(); URL.revokeObjectURL(url); }}>Download</Button> : '-'}</TableCell>
+                    <TableCell>{r.uploadId ?
+                     <Button onClick={async () => {
+                       try {
+                         const res = await api.get(`/uploads/${r.uploadId}`, { responseType: 'blob' });
+                         const url = URL.createObjectURL(res.data);
+                         const a = document.createElement('a');
+                         a.href = url;
+                         a.download = r.description || `receipt_${r.uploadId}`;
+                         a.click();
+                         URL.revokeObjectURL(url);
+                       } catch (e) {
+                         console.error('Download failed', e);
+                       }
+                     }}>
+                       Download
+                     </Button>
+                     : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

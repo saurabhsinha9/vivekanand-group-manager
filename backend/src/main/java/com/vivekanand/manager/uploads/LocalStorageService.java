@@ -42,11 +42,14 @@ public class LocalStorageService implements StorageService {
 
         String fn = StringUtils.cleanPath(file.getOriginalFilename());
         LocalDate d = LocalDate.now();
-        Path p = baseDir.resolve(d.getYear() + "/" + String.format("%02d", d.getMonthValue()));
+        Path p = baseDir.resolve(d.getYear() + "/" + String.format("%02d", d.getMonthValue())).normalize();
 
         try {
+            if (!p.startsWith(baseDir)) {
+                throw new IllegalArgumentException("Invalid storage path");
+            }
             Files.createDirectories(p);
-            Path target = p.resolve(System.currentTimeMillis() + "_" + fn);
+            Path target = p.resolve(System.currentTimeMillis() + "_" + fn).normalize();
             try (InputStream in = file.getInputStream()) {
                 Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -55,7 +58,6 @@ public class LocalStorageService implements StorageService {
             u.setOriginalFilename(fn);
             u.setContentType(file.getContentType());
             u.setSizeBytes(file.getSize());
-            // store filesystem path in storagePath (unchanged schema)
             u.setStoragePath(target.toString());
             u.setUploadedAt(Instant.now());
 
@@ -63,6 +65,7 @@ public class LocalStorageService implements StorageService {
         } catch (Exception e) {
             throw new RuntimeException("Upload failed", e);
         }
+
     }
 
     @Override

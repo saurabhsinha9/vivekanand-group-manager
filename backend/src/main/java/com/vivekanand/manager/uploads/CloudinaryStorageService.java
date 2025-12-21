@@ -56,17 +56,17 @@ public class CloudinaryStorageService implements StorageService {
                     "unique_filename", true
             );
 
-            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), options);
-
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(file.getBytes(), options);
             String secureUrl = (String) uploadResult.get("secure_url");
-            String publicId  = (String) uploadResult.get("public_id");
-            Long bytes       = ((Number) uploadResult.getOrDefault("bytes", file.getSize())).longValue();
+            String publicId = (String) uploadResult.get("public_id");
+            Object bytesObj = uploadResult.getOrDefault("bytes", file.getSize());
+            long bytes = (bytesObj instanceof Number) ? ((Number) bytesObj).longValue() : file.getSize();
 
             Upload u = new Upload();
             u.setOriginalFilename(fn);
             u.setContentType(file.getContentType()); // client-reported
             u.setSizeBytes(bytes);
-            // Minimal migration: store the Cloudinary secure URL in storagePath
+            u.setProviderId(publicId);
             u.setStoragePath(secureUrl);
             u.setUploadedAt(Instant.now());
 
@@ -89,7 +89,6 @@ public class CloudinaryStorageService implements StorageService {
 
     @Override
     public Resource loadAsResource(Upload upload) {
-        // We redirect for Cloudinary instead of streaming.
-        return null;
+        throw new UnsupportedOperationException("Cloudinary resources must be accessed via URL");
     }
 }

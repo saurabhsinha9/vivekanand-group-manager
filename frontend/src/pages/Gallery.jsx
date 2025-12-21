@@ -63,7 +63,7 @@ export default function Gallery() {
       const a = document.createElement('a'); a.href = url; a.download = filename || `image_${uploadId}`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      console.error('Public download error', e);
+      setError('Failed to download file.');
     }
   }
 
@@ -121,12 +121,18 @@ export default function Gallery() {
               <Grid item xs={12} sm={6} md={4} key={it.id}>
                 <Card>
                   {/* Public image path for thumbnails */}
-                  <CardMedia
-                    component="img"
-                    height="180"
-                    image={`${base}/public/uploads/${it.uploadId}`}
-                    alt={it.title || 'image'}
-                  />
+                  {it.contentType === 'video/mp4' ? (
+                    <video height={180} controls>
+                      <source src={`${base}/public/uploads/${it.uploadId}`} type="video/mp4" />
+                    </video>
+                  ) : (
+                    <CardMedia
+                      component="img"
+                      height="180"
+                      image={`${base}/public/uploads/${it.uploadId}`}
+                      alt={it.title || 'image'}
+                    />
+                  )}
                   <CardContent>
                     <Typography variant="subtitle1">{it.title || '(untitled)'}</Typography>
                     {it.caption && <Typography variant="body2">{it.caption}</Typography>}

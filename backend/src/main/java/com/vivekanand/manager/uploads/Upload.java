@@ -16,6 +16,7 @@ public class Upload {
     private String originalFilename;
     private String contentType;
     private Long sizeBytes;
+    private String providerId;
     private String storagePath;
     private Instant uploadedAt = Instant.now();
 }
