@@ -81,7 +81,6 @@ projects:
             name: vgm-fronend
             runtime: static
             plan: free
-            region: singapore
             repo: https://github.com/saurabhsinha9/vivekanand-group-manager
             rootDir: frontend/
             buildCommand: npm install && npm run build
