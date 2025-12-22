@@ -127,7 +127,7 @@ projects:
                 value: "14"
 
           # --- Restore Worker (Docker; used by one-off job in rotation) ---
-          - type: private_service
+          - type: worker
             name: vgm-restore-worker
             runtime: docker
             plan: free
