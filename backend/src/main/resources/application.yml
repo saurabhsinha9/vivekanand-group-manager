@@ -66,6 +66,14 @@ whatsapp:
     authToken: ${TWILIO_TOKEN}
     whatsappFrom: ${TWILIO_WHATSAPP_FROM}
 
+# -------------------- Backup Settings (All Profiles) --------------------
+backup:
+  local-dir: /opt/backups
+  remote-name: gdrive
+  remote-folder: vgm-backups
+  retention-days: 7
+  cron: "0 0 2 * * ?"   # Daily at 2 AM
+
 # -------------- Production profile (PostgreSQL) --------------
 ---
 spring:
@@ -104,7 +112,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO}    # e.g., update
-    show-sql    show-sql: ${JPA_SHOW_SQL}
+      show-sql: ${JPA_SHOW_SQL}
     properties:
       hibernate:
         format_sql: ${HIBERNATE_FORMAT_SQL}
