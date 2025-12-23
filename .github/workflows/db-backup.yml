@@ -1,0 +1,167 @@
+
+name: PostgreSQL Backup
+
+on:
+  schedule:
+    # Daily at 02:00 IST (UTC 20:30 previous day)
+    - cron: "30 20 * * *"
+  workflow_dispatch:
+    inputs:
+      encrypt_with_age:
+        description: "Encrypt backup with age (requires AGE_PUBLIC_KEY)"
+        type: boolean
+        default: true
+      run_retention_prune:
+        description: "Prune backups older than BACKUP_RETENTION_DAYS"
+        type: boolean
+        default: true
+      use_render_discovery:
+        description: "Discover DB creds from Render API (instead of secrets)"
+        type: boolean
+        default: false
+      render_db_service_name:
+        description: "Render Postgres service name (for discovery mode)"
+        type: string
+        default: ""
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      # Secrets mode (preferred simplest):
+      DB_URL: ${{ secrets.DB_URL }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASS: ${{ secrets.DB_PASS }}
+
+      # Discovery mode needs these:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+      # Storage & retention:
+      RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
+      GDRIVE_REMOTE: ${{ secrets.GDRIVE_REMOTE }}
+      BACKUP_RETENTION_DAYS: ${{ secrets.BACKUP_RETENTION_DAYS }}
+      AGE_PUBLIC_KEY: ${{ secrets.AGE_PUBLIC_KEY }}
+
+    steps:
+      - name: Checkout (optional)
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client rclone gzip curl jq
+          AGE_VERSION=v1.1.1
+          curl -sL "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz" \
+            | tar xz
+          sudo mv age/age /usr/local/bin/age
+          sudo mv age/age-keygen /usr/local/bin/age-keygen
+          rm -rf age
+
+      - name: Prepare rclone config
+        run: |
+          set -euo pipefail
+          test -n "${RCLONE_CONFIG:-}" || { echo "RCLONE_CONFIG is missing"; exit 1; }
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: (Optional) Discover DB creds from Render API
+        id: discover
+        if: ${{ github.event.inputs.use_render_discovery == 'true' }}
+        run: |
+          set -euo pipefail
+          test -n "${RENDER_API_KEY:-}" || { echo "RENDER_API_KEY missing"; exit 1; }
+          DB_NAME_INPUT="${{ github.event.inputs.render_db_service_name }}"
+          test -n "${DB_NAME_INPUT}" || { echo "render_db_service_name input required in discovery mode"; exit 1; }
+
+          # Fetch services and find the provided Postgres service by name
+          RESP=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services?limit=100")
+          CONN=$(echo "$RESP" | jq -r '.[] | select(.service.name=="'"$DB_NAME_INPUT"'") | .service.serviceDetails.connectionString')
+          USER=$(echo "$RESP" | jq -r '.[] | select(.service.name=="'"$DB_NAME_INPUT"'") | .service.serviceDetails.user')
+          PASS=$(echo "$RESP" | jq -r '.[] | select(.service.name=="'"$DB_NAME_INPUT"'") | .service.serviceDetails.password')
+
+          test -n "$CONN" || { echo "Could not discover connectionString for $DB_NAME_INPUT"; exit 1; }
+          echo "DB_URL=$CONN" >> "$GITHUB_OUTPUT"
+          echo "DB_USER=$USER" >> "$GITHUB_OUTPUT"
+          echo "DB_PASS=$PASS" >> "$GITHUB_OUTPUT"
+
+      - name: Run backup (with optional encryption)
+        env:
+          ENCRYPT_WITH_AGE: ${{ github.event.inputs.encrypt_with_age || 'true' }}
+          RUN_PRUNE: ${{ github.event.inputs.run_retention_prune || 'true' }}
+          DB_URL_FINAL: ${{ steps.discover.outputs.DB_URL || env.DB_URL }}
+          DB_USER_FINAL: ${{ steps.discover.outputs.DB_USER || env.DB_USER }}
+          DB_PASS_FINAL: ${{ steps.discover.outputs.DB_PASS || env.DB_PASS }}
+        run: |
+          set -euo pipefail
+
+          # Validate inputs
+          test -n "${DB_URL_FINAL:-}" || { echo "DB_URL is missing"; exit 1; }
+          test -n "${DB_USER_FINAL:-}" || { echo "DB_USER is missing"; exit 1; }
+          test -n "${DB_PASS_FINAL:-}" || { echo "DB_PASS is missing"; exit 1; }
+          test -n "${GDRIVE_REMOTE:-}" || { echo "GDRIVE_REMOTE is missing"; exit 1; }
+
+          JDBC="$DB_URL_FINAL"
+          HOSTPORT=$(echo "$JDBC" | sed -E 's#jdbc:postgresql://([^/]+)/.*#\1#')
+          HOST=$(echo "$HOSTPORT" | cut -d: -f1)
+          PORT=$(echo "$HOSTPORT" | cut -d: -f2)
+          PORT=${PORT:-5432}
+          DBNAME=$(echo "$JDBC" | sed -E 's#jdbc:postgresql://[^/]+/([^?]+).*#\1#')
+
+          DATE=$(date +'%Y-%m-%d_%H-%M-%S')
+          PLAINTEXT_SQL="vgm_${DBNAME}_${DATE}.sql"
+          GZ_FILE="${PLAINTEXT_SQL}.gz"
+          AGE_FILE="${GZ_FILE}.age"
+
+          echo "Starting pg_dump: host=$HOST port=$PORT db=$DBNAME"
+          if echo "$JDBC" | grep -qi 'sslmode=require'; then
+            export PGSSLMODE=require
+          fi
+
+          PGPASSWORD="$DB_PASS_FINAL" pg_dump \
+            --host="$HOST" \
+            --port="$PORT" \
+            --username="$DB_USER_FINAL" \
+            --dbname="$DBNAME" \
+            --format=plain \
+            --no-owner \
+            --no-privileges \
+            > "$PLAINTEXT_SQL"
+
+          gzip -9 "$PLAINTEXT_SQL"
+
+          if [ "$ENCRYPT_WITH_AGE" = "true" ]; then
+            test -n "${AGE_PUBLIC_KEY:-}" || { echo "AGE_PUBLIC_KEY missing but encryption requested"; exit 1; }
+            echo "Encrypting with age..."
+            age -o "$AGE_FILE" -r "$AGE_PUBLIC_KEY" "$GZ_FILE"
+            rm -f "$GZ_FILE"
+            UPLOAD_FILE="$AGE_FILE"
+          else
+            UPLOAD_FILE="$GZ_FILE"
+          fi
+
+          sha256sum "$UPLOAD_FILE" > "${UPLOAD_FILE}.sha256"
+
+          echo "Uploading to Google Drive: $GDRIVE_REMOTE/$(basename "$UPLOAD_FILE")"
+          rclone copy "$UPLOAD_FILE" "$GDRIVE_REMOTE" --progress
+          rclone copy "${UPLOAD_FILE}.sha256" "$GDRIVE_REMOTE" --progress
+
+          echo "Verifying upload exists..."
+          rclone ls "$GDRIVE_REMOTE" | grep "$(basename "$UPLOAD_FILE")" || { echo "Upload verification failed"; exit 1; }
+
+          if [ "$RUN_PRUNE" = "true" ] && [ -n "${BACKUP_RETENTION_DAYS:-}" ]; then
+            echo "Pruning backups older than $BACKUP_RETENTION_DAYS days"
+            rclone delete "$GDRIVE_REMOTE" --min-age "${BACKUP_RETENTION_DAYS}d"
+            rclone rmdirs "$GDRIVE_REMOTE" --leave-root
+          fi
+
+      - name: Upload workflow artifacts (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-output
+          path: |
+            *.gz
+            *.age
+            *.sha256
+          retention-days: 3
