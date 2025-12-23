@@ -2,8 +2,15 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import {
-  Container, Typography, Grid, Card, CardMedia, CardContent, CardActions,
-  Button, Pagination
+  Container,
+  Typography,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  CardActions,
+  Button,
+  Pagination
 } from '@mui/material';
 
 export default function Gallery() {
@@ -19,6 +26,8 @@ export default function Gallery() {
   const [size, setSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [error, setError] = useState('');
+
   // Load visible albums (PUBLIC)
   const loadAlbums = async () => {
     try {
@@ -27,6 +36,7 @@ export default function Gallery() {
     } catch (e) {
       console.error('Failed to load albums', e);
       setAlbums([]);
+      setError('Failed to load albums.');
     }
   };
 
@@ -44,25 +54,44 @@ export default function Gallery() {
       setItems([]);
       setTotalPages(1);
       setPage(0);
+      setError('Failed to load album items.');
     }
   };
 
-  useEffect(() => { loadAlbums(); }, []);
-  useEffect(() => { if (selectedAlbum) loadItems(selectedAlbum.id, 0); }, [selectedAlbum, size]);
+  useEffect(() => {
+    loadAlbums();
+  }, []);
+
+  useEffect(() => {
+    if (selectedAlbum) loadItems(selectedAlbum.id, 0);
+  }, [selectedAlbum, size]);
 
   const openAlbum = (album) => setSelectedAlbum(album);
-  const backToAlbums = () => { setSelectedAlbum(null); setItems([]); };
 
-  // Public download (no JWT, uses /api/public/uploads/{id})
+  const backToAlbums = () => {
+    setSelectedAlbum(null);
+    setItems([]);
+    setPage(0);
+    setTotalPages(1);
+  };
+
+  /**
+   * Public download (no JWT) via /api/public/uploads/{id}
+   * NOTE: Using an <a> with href to avoid CORS blob issues on Cloudinary redirects.
+   */
   async function downloadPublic(uploadId, filename) {
     try {
-      const res = await fetch(`${base}/public/uploads/${uploadId}`);
-      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = filename || `image_${uploadId}`; a.click();
-      URL.revokeObjectURL(url);
+      const url = `${base}/public/uploads/${uploadId}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || `file_${uploadId}`;
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch (e) {
+      console.error('Download failed', e);
       setError('Failed to download file.');
     }
   }
@@ -72,17 +101,25 @@ export default function Gallery() {
       {!selectedAlbum && (
         <>
           <Typography variant="h4">Gallery</Typography>
+          {error && (
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              {error}
+            </Typography>
+          )}
+
           <Grid container spacing={2} sx={{ mt: 2 }}>
             {albums.map(a => (
               <Grid item xs={12} sm={6} md={4} key={a.id}>
                 <Card>
-                  {/* Album cover (public image) or placeholder */}
+                  {/* Album cover (public image/video poster) or placeholder */}
                   {a.coverUploadId ? (
                     <CardMedia
                       component="img"
                       height="200"
-                      image={`${base}/public/uploads/${a.coverUploadId}`}
+                      // Use /poster so it works for both image & video covers
+                      image={`${base}/public/uploads/${a.coverUploadId}/poster`}
                       alt={a.name}
+                      loading="lazy"
                     />
                   ) : (
                     <CardMedia
@@ -116,34 +153,60 @@ export default function Gallery() {
           <Typography variant="h5">{selectedAlbum.name}</Typography>
           <Button sx={{ mt: 1 }} onClick={backToAlbums}>← Back to Albums</Button>
 
+          {error && (
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              {error}
+            </Typography>
+          )}
+
           <Grid container spacing={2} sx={{ mt: 2 }}>
             {items.map(it => (
               <Grid item xs={12} sm={6} md={4} key={it.id}>
                 <Card>
-                  {/* Public image path for thumbnails */}
+                  {/* Thumbnails:
+                     - Images: render the image URL
+                     - Videos: render <video> with poster from /poster endpoint
+                     If your items DTO includes 'contentType', this works directly.
+                  */}
                   {it.contentType === 'video/mp4' ? (
-                    <video height={180} controls>
-                      <source src={`${base}/public/uploads/${it.uploadId}`} type="video/mp4" />
-                    </video>
+                    <CardContent sx={{ p: 0 }}>
+                      <video
+                        height={180}
+                        controls
+                        muted
+                        playsInline
+                        preload="metadata"
+                        poster={`${base}/public/uploads/${it.uploadId}/poster`}
+                        style={{ display: 'block', width: '100%', backgroundColor: '#000' }}
+                      >
+                        <source src={`${base}/public/uploads/${it.uploadId}`} type="video/mp4" />
+                      </video>
+                    </CardContent>
                   ) : (
                     <CardMedia
                       component="img"
                       height="180"
                       image={`${base}/public/uploads/${it.uploadId}`}
                       alt={it.title || 'image'}
+                      loading="lazy"
                     />
                   )}
+
                   <CardContent>
                     <Typography variant="subtitle1">{it.title || '(untitled)'}</Typography>
                     {it.caption && <Typography variant="body2">{it.caption}</Typography>}
                     {it.tags && <Typography variant="caption">Tags: {it.tags}</Typography>}
                   </CardContent>
+
                   <CardActions>
-                    <Button onClick={() => downloadPublic(it.uploadId, it.title || it.id)}>Download</Button>
+                    <Button onClick={() => downloadPublic(it.uploadId, it.title || String(it.id))}>
+                      Download
+                    </Button>
                   </CardActions>
                 </Card>
               </Grid>
             ))}
+
             {items.length === 0 && (
               <Grid item xs={12}>
                 <Typography>This album has no public items yet.</Typography>
