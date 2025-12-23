@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/backup")
+@RequestMapping("/api/admin/backup")
 public class BackupController {
 
     private final BackupManager backupManager;
@@ -17,6 +17,7 @@ public class BackupController {
 
     @PostMapping("/run")
     public String runBackup() throws Exception {
-        return backupManager.backupNow();
+        backupManager.backupNowAsync();
+        return "Backup started in background";
     }
 }

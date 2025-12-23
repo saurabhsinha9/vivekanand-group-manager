@@ -2,6 +2,7 @@ package com.vivekanand.manager.backup;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -25,6 +26,15 @@ public class BackupManager {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No backup service found for DB: " + dbType))
                 .backupNow();
+    }
+
+    @Async
+    public void backupNowAsync() {
+        try {
+            backupNow();
+        } catch (Exception e) {
+            e.printStackTrace(); // Replace with proper logging
+        }
     }
 
     private String detectDbType(String url) {
