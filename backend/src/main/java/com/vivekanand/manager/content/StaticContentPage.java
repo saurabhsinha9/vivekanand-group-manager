@@ -22,8 +22,10 @@ public class StaticContentPage {
     @Column(nullable = false, length = 256)
     private String title;
 
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String publishedContent;
 
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String draftContent;
 
     @Enumerated(EnumType.STRING)
