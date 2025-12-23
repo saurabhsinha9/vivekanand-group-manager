@@ -56,11 +56,13 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/api/gallery/albums", "/api/gallery/albums/*/items").permitAll()
                         .requestMatchers("/api/public/uploads/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/uploads/**").permitAll()
+                        //.requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/gallery/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/static/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, repo), UsernamePasswordAuthenticationFilter.class);
         return http.build();
