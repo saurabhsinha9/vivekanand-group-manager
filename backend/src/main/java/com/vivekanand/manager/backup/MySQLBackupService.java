@@ -12,10 +12,8 @@ public class MySQLBackupService implements BackupService {
 
     @Value("${spring.datasource.url}")
     private String dbUrl;
-
     @Value("${spring.datasource.username}")
     private String dbUser;
-
     @Value("${spring.datasource.password}")
     private String dbPass;
 
@@ -44,18 +42,23 @@ public class MySQLBackupService implements BackupService {
         Process process = new ProcessBuilder("bash", "-c", command).inheritIO().start();
         if (process.waitFor() != 0) throw new RuntimeException("MySQL backup failed");
 
-        // Upload and cleanup
         rcloneUploadAndCleanup(backupFile);
         return backupFile.toString();
     }
 
     private void rcloneUploadAndCleanup(Path backupFile) throws Exception {
+        String rcloneConfig = backupProperties.getRcloneConfigPath() != null
+                ? "--config " + backupProperties.getRcloneConfigPath()
+                : "";
         String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
-        Process rcloneUpload = new ProcessBuilder("bash", "-c", "rclone copy " + backupFile + " " + remoteTarget)
+
+        Process rcloneUpload = new ProcessBuilder("bash", "-c",
+                "rclone " + rcloneConfig + " copy " + backupFile + " " + remoteTarget)
                 .inheritIO().start();
         rcloneUpload.waitFor();
+
         cleanupOldLocalBackups();
-        cleanupOldRemoteBackups();
+        cleanupOldRemoteBackups(rcloneConfig);
     }
 
     private void cleanupOldLocalBackups() throws Exception {
@@ -75,9 +78,9 @@ public class MySQLBackupService implements BackupService {
                 });
     }
 
-    private void cleanupOldRemoteBackups() throws Exception {
+    private void cleanupOldRemoteBackups(String rcloneConfig) throws Exception {
         String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
-        String cmd = String.format("rclone delete --min-age %dd %s", backupProperties.getRetentionDays(), remoteTarget);
+        String cmd = String.format("rclone %s delete --min-age %dd %s", rcloneConfig, backupProperties.getRetentionDays(), remoteTarget);
         Process rcloneDelete = new ProcessBuilder("bash", "-c", cmd).inheritIO().start();
         rcloneDelete.waitFor();
     }

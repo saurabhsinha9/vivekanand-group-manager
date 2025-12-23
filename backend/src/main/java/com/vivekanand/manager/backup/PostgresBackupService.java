@@ -12,10 +12,8 @@ public class PostgresBackupService implements BackupService {
 
     @Value("${spring.datasource.url}")
     private String dbUrl;
-
     @Value("${spring.datasource.username}")
     private String dbUser;
-
     @Value("${spring.datasource.password}")
     private String dbPass;
 
@@ -44,26 +42,34 @@ public class PostgresBackupService implements BackupService {
         Process process = new ProcessBuilder("bash", "-c", command).inheritIO().start();
         if (process.waitFor() != 0) throw new RuntimeException("PostgreSQL backup failed");
 
-        // Upload and cleanup
+        // Upload & cleanup
         rcloneUploadAndCleanup(backupFile);
+
         return backupFile.toString();
     }
 
     private void rcloneUploadAndCleanup(Path backupFile) throws Exception {
+        String rcloneConfig = backupProperties.getRcloneConfigPath() != null
+                ? "--config " + backupProperties.getRcloneConfigPath()
+                : "";
+
         String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
+
         // Upload
-        Process rcloneUpload = new ProcessBuilder("bash", "-c", "rclone copy " + backupFile + " " + remoteTarget)
+        Process rcloneUpload = new ProcessBuilder("bash", "-c",
+                "rclone " + rcloneConfig + " copy " + backupFile + " " + remoteTarget)
                 .inheritIO().start();
         rcloneUpload.waitFor();
-        // Local cleanup
+
+        // Cleanup old backups
         cleanupOldLocalBackups();
-        // Remote cleanup
-        cleanupOldRemoteBackups();
+        cleanupOldRemoteBackups(rcloneConfig);
     }
 
     private void cleanupOldLocalBackups() throws Exception {
         Path dir = Path.of(backupProperties.getLocalDir());
         if (!Files.exists(dir)) return;
+
         Files.list(dir)
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(".sql.gz"))
@@ -74,13 +80,15 @@ public class PostgresBackupService implements BackupService {
                             Files.deleteIfExists(f);
                             System.out.println("Deleted old local backup: " + f);
                         }
-                    } catch (Exception e) { e.printStackTrace(); }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
     }
 
-    private void cleanupOldRemoteBackups() throws Exception {
+    private void cleanupOldRemoteBackups(String rcloneConfig) throws Exception {
         String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
-        String cmd = String.format("rclone delete --min-age %dd %s", backupProperties.getRetentionDays(), remoteTarget);
+        String cmd = String.format("rclone %s delete --min-age %dd %s", rcloneConfig, backupProperties.getRetentionDays(), remoteTarget);
         Process rcloneDelete = new ProcessBuilder("bash", "-c", cmd).inheritIO().start();
         rcloneDelete.waitFor();
     }

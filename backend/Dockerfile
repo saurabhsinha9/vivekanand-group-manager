@@ -38,4 +38,6 @@ COPY --from=builder /app/target/*.jar /app/app.jar
 
 USER appuser
 
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /app/app.jar"]
+# Copy RCLONE_CONFIG environment variable to file
+# Add in ENTRYPOINT
+ENTRYPOINT ["sh", "-c", "echo \"$RCLONE_CONFIG\" > /app/rclone.conf && java ${JAVA_OPTS} -jar /app/app.jar"]

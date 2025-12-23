@@ -12,14 +12,7 @@ public class BackupProperties {
     private String localDir;
     private String remoteName;
     private String remoteFolder;
-
-    /**
-     * Retention period in days for local backups
-     */
     private int retentionDays;
-
-    /**
-     * Cron expression for scheduled backup
-     */
     private String cron;
+    private String rcloneConfigPath;
 }
