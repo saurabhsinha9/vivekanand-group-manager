@@ -57,7 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/gallery/albums", "/api/gallery/albums/*/items").permitAll()
                         .requestMatchers("/api/public/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/uploads/**").permitAll()
-                        //.requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/public/pages/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/gallery/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/static/**").permitAll()
