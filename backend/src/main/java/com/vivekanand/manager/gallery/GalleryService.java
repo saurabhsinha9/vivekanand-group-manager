@@ -1,6 +1,9 @@
 package com.vivekanand.manager.gallery;
 
 import com.vivekanand.manager.gallery.dto.*;
+import com.vivekanand.manager.uploads.Upload;
+import com.vivekanand.manager.uploads.UploadRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
@@ -9,6 +12,8 @@ import java.util.List;
 
 @Service
 public class GalleryService {
+    @Autowired
+    private UploadRepository uploadRepo;
     private final AlbumRepository albumRepo;
     private final GalleryItemRepository itemRepo;
 
@@ -69,10 +74,36 @@ public class GalleryService {
         itemRepo.save(gi);
     }
 
-    public Page<GalleryItem> listItems(Long albumId, boolean onlyVisible, int page, int size) {
-        var pageable = PageRequest.of(page, size, Sort.by("position").ascending().and(Sort.by("createdAt").descending()));
-        return onlyVisible ? itemRepo.findByAlbumIdAndVisibleTrueAndDeletedAtIsNull(albumId, pageable)
+    public Page<AlbumItemDto> listItems(Long albumId, boolean onlyVisible, int page, int size) {
+        var pageable = PageRequest.of(page, size,
+                Sort.by("position").ascending().and(Sort.by("createdAt").descending()));
+        Page<GalleryItem> pageItems = onlyVisible
+                ? itemRepo.findByAlbumIdAndVisibleTrueAndDeletedAtIsNull(albumId, pageable)
                 : itemRepo.findByAlbumIdAndDeletedAtIsNull(albumId, pageable);
+
+        // Batch-load uploads to avoid N+1
+        var uploadIds = pageItems.getContent().stream()
+                .map(GalleryItem::getUploadId)
+                .distinct()
+                .toList();
+
+        var uploadsById = uploadRepo.findAllById(uploadIds).stream()
+                .collect(java.util.stream.Collectors.toMap(Upload::getId, java.util.function.Function.identity()));
+
+        return pageItems.map(it -> {
+            Upload up = uploadsById.get(it.getUploadId());
+            String ct = (up != null) ? up.getContentType() : null;
+            return new AlbumItemDto(
+                    it.getId(),
+                    it.getUploadId(),
+                    it.getTitle(),
+                    it.getCaption(),
+                    it.getTags(),
+                    it.getPosition(),
+                    it.isVisible(),
+                    ct
+            );
+        });
     }
 
     public List<GalleryItem> bulkReorder(Long albumId, List<Long> orderedItemIds) {

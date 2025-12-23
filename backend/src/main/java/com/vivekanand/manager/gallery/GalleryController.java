@@ -1,5 +1,7 @@
 package com.vivekanand.manager.gallery;
 
+import com.vivekanand.manager.gallery.dto.AlbumItemDto;
+import com.vivekanand.manager.gallery.dto.GalleryItemDto;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 
@@ -20,8 +22,8 @@ public class GalleryController {
     }
 
     @GetMapping("/albums/{albumId}/items")
-    public Page<GalleryItem> items(@PathVariable Long albumId, @RequestParam(defaultValue = "true") boolean onlyVisible,
-                                   @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "12") int size) {
+    public Page<AlbumItemDto> items(@PathVariable Long albumId, @RequestParam(defaultValue = "true") boolean onlyVisible,
+                                    @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "12") int size) {
         return svc.listItems(albumId, onlyVisible, page, size);
     }
 }
