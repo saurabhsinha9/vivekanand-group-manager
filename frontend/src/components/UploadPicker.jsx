@@ -1,5 +1,4 @@
 
-// src/components/UploadPicker.jsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/axios';
 import {
@@ -10,7 +9,7 @@ import {
 export default function UploadPicker({ open, onClose, onSelect }) {
   const [uploads, setUploads] = useState([]);
   const [query, setQuery] = useState('');
-  const [type, setType] = useState('images'); // 'images' | 'videos' | 'pdfs' | 'all'
+  const [type, setType] = useState('images'); // images | videos | pdfs | all
   const [loading, setLoading] = useState(false);
   const abortRef = useRef(null);
 
@@ -21,7 +20,7 @@ export default function UploadPicker({ open, onClose, onSelect }) {
         setLoading(true);
         abortRef.current?.abort();
         abortRef.current = new AbortController();
-        const { data } = await api.get('/uploads', { signal: abortRef.current.signal }); // JWT via axios interceptor
+        const { data } = await api.get('/uploads', { signal: abortRef.current.signal });
         setUploads(data || []);
       } catch (err) {
         if (err.name !== 'CanceledError') console.error('Load uploads failed', err);
@@ -53,6 +52,8 @@ export default function UploadPicker({ open, onClose, onSelect }) {
     });
   }, [uploads, debouncedQuery, type]);
 
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>Select Upload</DialogTitle>
@@ -80,23 +81,19 @@ export default function UploadPicker({ open, onClose, onSelect }) {
           <Grid container spacing={2} sx={{ mt: 2 }}>
             {filtered.map(u => (
               <Grid item xs={12} sm={6} md={4} key={u.id}>
-                <Card sx={{ cursor: 'pointer' }} onClick={() => onSelect(u)}>
+                <Card sx={{
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  transition: 'transform .2s ease, box-shadow .2s ease',
+                  '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 }
+                }} onClick={() => onSelect(u)}>
                   {u.contentType?.startsWith('image/') ? (
-                    <CardMedia
-                      component="img"
-                      height="160"
-                      image={`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/public/uploads/${u.id}/poster`}
-                      alt={u.originalFilename ?? 'image'}
-                      loading="lazy"
-                    />
+                    <CardMedia component="img" height="160"
+                      image={`${base}/public/uploads/${u.id}/poster`} alt={u.originalFilename ?? 'image'} loading="lazy" />
                   ) : u.contentType === 'video/mp4' ? (
-                    <CardMedia
-                      component="img"
-                      height="160"
-                      image={`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/public/uploads/${u.id}/poster`}
-                      alt={u.originalFilename ?? 'video poster'}
-                      loading="lazy"
-                    />
+                    <CardMedia component="img" height="160"
+                      image={`${base}/public/uploads/${u.id}/poster`} alt={u.originalFilename ?? 'video poster'} loading="lazy" />
                   ) : (
                     <CardContent>
                       <Typography variant="subtitle1">{u.originalFilename ?? '(file)'}</Typography>
@@ -107,9 +104,7 @@ export default function UploadPicker({ open, onClose, onSelect }) {
               </Grid>
             ))}
             {filtered.length === 0 && !loading && (
-              <Grid item xs={12}>
-                <Typography>No uploads found. Try changing filters or search.</Typography>
-              </Grid>
+              <Grid item xs={12}><Typography>No uploads found. Try changing filters or search.</Typography></Grid>
             )}
           </Grid>
         )}
