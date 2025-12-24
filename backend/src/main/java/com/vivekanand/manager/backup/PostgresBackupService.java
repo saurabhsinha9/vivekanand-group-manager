@@ -41,7 +41,7 @@ public class PostgresBackupService implements BackupService {
         PgInfo pg = parsePostgresUrl(dbUrl);
 
         String command = String.format(
-                "PGPASSWORD='%s' pg_dump -h %s -p %s -U %s %s | gzip > %s",
+                "set -o pipefail && PGPASSWORD='%s' pg_dump -h %s -p %s -U %s --sslmode=require %s | gzip > %s",
                 dbPass,
                 pg.host,
                 pg.port,
