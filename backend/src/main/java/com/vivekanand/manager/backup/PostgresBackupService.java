@@ -38,10 +38,18 @@ public class PostgresBackupService implements BackupService {
         Path backupFile = Path.of(backupProperties.getLocalDir(), "backup_" + timestamp + ".sql.gz");
         Files.createDirectories(backupFile.getParent());
 
+        PgInfo pg = parsePostgresUrl(dbUrl);
+
         String command = String.format(
-                "PGPASSWORD='%s' pg_dump -U %s %s | gzip > %s",
-                dbPass, dbUser, dbName, backupFile
+                "PGPASSWORD='%s' pg_dump -h %s -p %s -U %s %s | gzip > %s",
+                dbPass,
+                pg.host,
+                pg.port,
+                dbUser,
+                pg.dbName,
+                backupFile
         );
+
         Process process = new ProcessBuilder("bash", "-c", command).inheritIO().start();
         if (process.waitFor() != 0) throw new RuntimeException("PostgreSQL backup failed");
 
@@ -96,4 +104,29 @@ public class PostgresBackupService implements BackupService {
         Process rcloneDelete = new ProcessBuilder("bash", "-c", cmd).inheritIO().start();
         rcloneDelete.waitFor();
     }
+    private static class PgInfo {
+        String host;
+        String port;
+        String dbName;
+    }
+
+    private PgInfo parsePostgresUrl(String jdbcUrl) {
+        String noPrefix = jdbcUrl.replace("jdbc:postgresql://", "");
+        String[] mainAndParams = noPrefix.split("\\?");
+        String main = mainAndParams[0];          // host:port/db
+
+        String[] hostAndDb = main.split("/");
+        String hostPort = hostAndDb[0];
+        String dbName = hostAndDb[1];
+
+        String[] hp = hostPort.split(":");
+
+        PgInfo info = new PgInfo();
+        info.host = hp[0];
+        info.port = hp.length > 1 ? hp[1] : "5432";
+        info.dbName = dbName;
+
+        return info;
+    }
+
 }
