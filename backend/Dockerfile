@@ -40,4 +40,4 @@ USER appuser
 
 # Copy RCLONE_CONFIG environment variable to file
 # Add in ENTRYPOINT
-ENTRYPOINT ["sh", "-c", "echo \"$RCLONE_CONFIG\" > /app/rclone.conf && java ${JAVA_OPTS} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "echo \"$RCLONE_CONFIG\" > /app/rclone.conf && chmod 600 /app/rclone.conf && java ${JAVA_OPTS} -jar /app/app.jar"]

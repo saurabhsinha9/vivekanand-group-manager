@@ -69,6 +69,7 @@ whatsapp:
 # -------------------- Backup Settings (All Profiles) --------------------
 backup:
   local-dir: /app/backups
+  rclone-config-path: /app/rclone.conf
   remote-name: gdrive
   remote-folder: vgm-backups
   retention-days: 7

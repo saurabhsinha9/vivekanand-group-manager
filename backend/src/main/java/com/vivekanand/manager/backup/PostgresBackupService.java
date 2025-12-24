@@ -30,7 +30,10 @@ public class PostgresBackupService implements BackupService {
 
     @Override
     public String backupNow() throws Exception {
-        String dbName = dbUrl.substring(dbUrl.lastIndexOf("/") + 1);
+        String rawDbName = dbUrl.substring(dbUrl.lastIndexOf("/") + 1);
+        String dbName = rawDbName.contains("?")
+                ? rawDbName.substring(0, rawDbName.indexOf("?"))
+                : rawDbName;
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         Path backupFile = Path.of(backupProperties.getLocalDir(), "backup_" + timestamp + ".sql.gz");
         Files.createDirectories(backupFile.getParent());
@@ -49,6 +52,7 @@ public class PostgresBackupService implements BackupService {
     }
 
     private void rcloneUploadAndCleanup(Path backupFile) throws Exception {
+        System.out.println("RCLONE CONFIG PATH = " + backupProperties.getRcloneConfigPath());
         String rcloneConfig = backupProperties.getRcloneConfigPath() != null
                 ? "--config " + backupProperties.getRcloneConfigPath()
                 : "";
