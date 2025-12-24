@@ -41,7 +41,9 @@ public class PostgresBackupService implements BackupService {
         PgInfo pg = parsePostgresUrl(dbUrl);
 
         String command = String.format(
-                "set -o pipefail && PGPASSWORD='%s' pg_dump -h %s -p %s -U %s --sslmode=require %s | gzip > %s",
+                "set -o pipefail && " +
+                        "PGPASSWORD='%s' PGSSLMODE=require " +
+                        "pg_dump -h %s -p %s -U %s %s | gzip > %s",
                 dbPass,
                 pg.host,
                 pg.port,
@@ -49,6 +51,7 @@ public class PostgresBackupService implements BackupService {
                 pg.dbName,
                 backupFile
         );
+
 
         Process process = new ProcessBuilder("bash", "-c", command).inheritIO().start();
         if (process.waitFor() != 0) throw new RuntimeException("PostgreSQL backup failed");
