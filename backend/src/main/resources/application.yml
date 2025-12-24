@@ -68,7 +68,7 @@ whatsapp:
 
 # -------------------- Backup Settings (All Profiles) --------------------
 backup:
-  local-dir: /opt/backups
+  local-dir: /app/backups
   remote-name: gdrive
   remote-folder: vgm-backups
   retention-days: 7
