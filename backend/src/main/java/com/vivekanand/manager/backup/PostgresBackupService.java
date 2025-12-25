@@ -3,6 +3,8 @@ package com.vivekanand.manager.backup;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,7 +45,7 @@ public class PostgresBackupService implements BackupService {
         String command = String.format(
                 "set -o pipefail && " +
                         "PGPASSWORD='%s' PGSSLMODE=require " +
-                        "pg_dump -h %s -p %s -U %s %s | gzip > %s",
+                        "pg_dump -h %s -p %s -U %s --schema=public --verbose %s | gzip > %s",
                 dbPass,
                 pg.host,
                 pg.port,
@@ -52,9 +54,28 @@ public class PostgresBackupService implements BackupService {
                 backupFile
         );
 
+        System.out.println(command);
+        ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
 
-        Process process = new ProcessBuilder("bash", "-c", command).inheritIO().start();
-        if (process.waitFor() != 0) throw new RuntimeException("PostgreSQL backup failed");
+// merge stderr + stdout
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+
+// 🔥 READ AND PRINT OUTPUT IN REAL TIME
+        try (BufferedReader reader =
+                     new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[BACKUP] " + line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException("Backup command failed with exit code " + exitCode);
+        }
 
         // Upload & cleanup
         rcloneUploadAndCleanup(backupFile);
