@@ -55,8 +55,6 @@ public class PostgresBackupService implements BackupService {
                      StandardOpenOption.TRUNCATE_EXISTING
              )) {
 
-            conn.setAutoCommit(false);
-
             writer.write("-- PostgreSQL JDBC Backup\n");
             writer.write("-- Generated at " + LocalDateTime.now() + "\n\n");
 
@@ -104,9 +102,19 @@ public class PostgresBackupService implements BackupService {
             ResultSetMetaData meta = rs.getMetaData();
             int columnCount = meta.getColumnCount();
 
+            // Prepare column names for INSERT
+            StringBuilder columnNames = new StringBuilder();
+            columnNames.append("(");
+            for (int i = 1; i <= columnCount; i++) {
+                columnNames.append(meta.getColumnName(i));
+                if (i < columnCount) columnNames.append(", ");
+            }
+            columnNames.append(")");
+
             while (rs.next()) {
                 StringBuilder insert = new StringBuilder();
-                insert.append("INSERT INTO ").append(table).append(" VALUES (");
+                insert.append("INSERT INTO ").append(table).append(" ")
+                        .append(columnNames).append(" VALUES (");
 
                 for (int i = 1; i <= columnCount; i++) {
                     Object value = rs.getObject(i);

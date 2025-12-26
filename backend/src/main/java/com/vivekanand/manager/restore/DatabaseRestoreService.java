@@ -2,15 +2,13 @@ package com.vivekanand.manager.restore;
 
 import com.vivekanand.manager.backup.BackupProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
-import java.nio.file.*;
-import java.sql.Connection;
-import java.sql.Statement;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Optional;
 
@@ -27,18 +25,18 @@ public class DatabaseRestoreService {
     }
 
     /**
-     * Detect empty database (no tables in public schema)
+     * Check if the database is empty (no tables in public schema)
      */
     public boolean isDatabaseEmpty() {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'",
                 Integer.class
         );
-        return count != null && count == 0;
+        return count == null || count == 0;
     }
 
     /**
-     * Download latest SQL backup and restore
+     * Restore the latest backup SQL file from Rclone
      */
     public void restoreLatestBackup() throws Exception {
         Path localDir = Path.of(backupProperties.getLocalDir());
@@ -51,13 +49,13 @@ public class DatabaseRestoreService {
         String remoteTarget =
                 backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
 
-        String downloadCmd =
-                "rclone " + rcloneConfig +
-                        " copy --include 'backup_*.sql' " +
-                        remoteTarget + " " + localDir;
-
+        // Download all SQL files
+        String downloadCmd = "rclone " + rcloneConfig +
+                " copy --include 'backup_*.sql' " +
+                remoteTarget + " " + localDir;
         runCommand(downloadCmd);
 
+        // Pick the latest backup
         Optional<Path> latestBackup = Files.list(localDir)
                 .filter(f -> f.getFileName().toString().endsWith(".sql"))
                 .max(Comparator.comparingLong(f -> f.toFile().lastModified()));
@@ -70,46 +68,35 @@ public class DatabaseRestoreService {
     }
 
     /**
-     * Restore SQL file using JDBC (transaction-safe)
+     * Restore SQL file using JDBC
      */
-    private void restoreSqlFile(Path sqlFile) throws Exception {
+    @Transactional
+    public void restoreSqlFile(Path sqlFile) throws Exception {
         System.out.println("[RESTORE] Restoring from file: " + sqlFile);
 
-        try (Connection conn =
-                     DataSourceUtils.getConnection(jdbcTemplate.getDataSource())) {
+        try (BufferedReader reader = Files.newBufferedReader(sqlFile)) {
+            StringBuilder sql = new StringBuilder();
+            String line;
 
-            conn.setAutoCommit(false);
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
 
-            try (BufferedReader reader = Files.newBufferedReader(sqlFile);
-                 Statement stmt = conn.createStatement()) {
+                if (line.isEmpty() || line.startsWith("--")) continue;
 
-                StringBuilder sql = new StringBuilder();
-                String line;
+                sql.append(line).append(" ");
 
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-
-                    if (line.isEmpty() || line.startsWith("--")) {
-                        continue;
-                    }
-
-                    sql.append(line).append(" ");
-
-                    if (line.endsWith(";")) {
-                        stmt.execute(sql.toString());
-                        sql.setLength(0);
-                    }
+                if (line.endsWith(";")) {
+                    jdbcTemplate.execute(sql.toString());
+                    sql.setLength(0);
                 }
             }
-
-            conn.commit();
         }
 
-        System.out.println("[RESTORE] SQL restore completed successfully");
+        System.out.println("[RESTORE] Restore completed successfully");
     }
 
     /**
-     * Execute shell commands (rclone)
+     * Run shell command (for Rclone)
      */
     private void runCommand(String command) throws Exception {
         System.out.println("[CMD] " + command);
@@ -118,9 +105,8 @@ public class DatabaseRestoreService {
                 .redirectErrorStream(true)
                 .start();
 
-        try (BufferedReader reader =
-                     new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-
+        try (BufferedReader reader = new BufferedReader(
+                new java.io.InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println("[CMD] " + line);
