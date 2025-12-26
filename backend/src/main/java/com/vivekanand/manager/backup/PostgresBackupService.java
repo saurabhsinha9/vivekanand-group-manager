@@ -124,13 +124,16 @@ public class PostgresBackupService implements BackupService {
                     } else if (value instanceof Number || value instanceof Boolean) {
                         insert.append(value);
                     } else {
-                        insert.append("'")
-                                .append(value.toString().replace("'", "''")
-                                        .replace("\\", "\\\\")   // escape backslash
-                                        .replace("'", "''")      // escape quotes
-                                        .replace("\r", "\\r")
-                                        .replace("\n", "\\n"))
+                        String escaped = value.toString()
+                                .replace("\\", "\\\\")
+                                .replace("'", "''")
+                                .replace("\r", "")
+                                .replace("\n", "\\n");
+
+                        insert.append("E'")
+                                .append(escaped)
                                 .append("'");
+
                     }
 
                     if (i < columnCount) insert.append(", ");
