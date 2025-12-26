@@ -125,7 +125,11 @@ public class PostgresBackupService implements BackupService {
                         insert.append(value);
                     } else {
                         insert.append("'")
-                                .append(value.toString().replace("'", "''"))
+                                .append(value.toString().replace("'", "''")
+                                        .replace("\\", "\\\\")   // escape backslash
+                                        .replace("'", "''")      // escape quotes
+                                        .replace("\r", "\\r")
+                                        .replace("\n", "\\n"))
                                 .append("'");
                     }
 
