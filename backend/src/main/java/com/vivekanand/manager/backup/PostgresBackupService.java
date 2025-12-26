@@ -37,134 +37,152 @@ public class PostgresBackupService implements BackupService {
 
     @Override
     public String backupNow() throws Exception {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        Path backupFile = Path.of(backupProperties.getLocalDir(), "backup_" + timestamp + ".sql");
+
+        String timestamp = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+        Path backupFile = Path.of(
+                backupProperties.getLocalDir(),
+                "backup_" + timestamp + ".sql"
+        );
+
         Files.createDirectories(backupFile.getParent());
 
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
-             BufferedWriter writer = Files.newBufferedWriter(backupFile, StandardOpenOption.CREATE)) {
+             BufferedWriter writer = Files.newBufferedWriter(
+                     backupFile,
+                     StandardOpenOption.CREATE,
+                     StandardOpenOption.TRUNCATE_EXISTING
+             )) {
 
-            // 1️⃣ Export tables and data
-            List<String> tables = new ArrayList<>();
-            try (ResultSet rs = conn.getMetaData().getTables(null, "public", "%", new String[]{"TABLE"})) {
-                while (rs.next()) {
-                    String tableName = rs.getString("TABLE_NAME");
-                    tables.add(tableName);
+            conn.setAutoCommit(false);
 
-                    writer.write("-- Table: " + tableName + "\n");
-                    writer.write("TRUNCATE TABLE " + tableName + " CASCADE;\n\n");
+            writer.write("-- PostgreSQL JDBC Backup\n");
+            writer.write("-- Generated at " + LocalDateTime.now() + "\n\n");
 
-                    // Export data
-                    try (Statement stmt = conn.createStatement();
-                         ResultSet rsData = stmt.executeQuery("SELECT * FROM " + tableName)) {
-                        ResultSetMetaData meta = rsData.getMetaData();
-                        while (rsData.next()) {
-                            StringBuilder sb = new StringBuilder("INSERT INTO " + tableName + " VALUES(");
-                            for (int i = 1; i <= meta.getColumnCount(); i++) {
-                                Object val = rsData.getObject(i);
-                                if (val == null) sb.append("NULL");
-                                else sb.append("'").append(val.toString().replace("'", "''")).append("'");
-                                if (i < meta.getColumnCount()) sb.append(",");
-                            }
-                            sb.append(");\n");
-                            writer.write(sb.toString());
-                        }
-                    }
-                    writer.write("\n");
-                }
+            List<String> tables = fetchPublicTables(conn);
+
+            for (String table : tables) {
+                backupTable(conn, writer, table);
             }
-
-            // 2️⃣ Export sequences
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rsSeq = stmt.executeQuery(
-                         "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema='public'")) {
-                while (rsSeq.next()) {
-                    String seq = rsSeq.getString("sequence_name");
-                    writer.write("-- Sequence: " + seq + "\n");
-                    try (ResultSet rsVal = stmt.executeQuery("SELECT last_value, is_called FROM " + seq)) {
-                        if (rsVal.next()) {
-                            long val = rsVal.getLong("last_value");
-                            boolean called = rsVal.getBoolean("is_called");
-                            writer.write("ALTER SEQUENCE " + seq + " RESTART WITH " + (called ? val + 1 : val) + ";\n\n");
-                        }
-                    }
-                }
-            }
-
-            // 3️⃣ Export indexes
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rsIdx = stmt.executeQuery(
-                         "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname='public'")) {
-                while (rsIdx.next()) {
-                    writer.write("-- Index: " + rsIdx.getString("indexname") + "\n");
-                    writer.write(rsIdx.getString("indexdef") + ";\n\n");
-                }
-            }
-
-            // 4️⃣ Export foreign keys
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rsFk = stmt.executeQuery(
-                         "SELECT conname, pg_get_constraintdef(oid) as definition FROM pg_constraint " +
-                                 "WHERE connamespace = 'public'::regnamespace AND contype='f'")) {
-                while (rsFk.next()) {
-                    writer.write("-- Foreign key: " + rsFk.getString("conname") + "\n");
-                    writer.write("ALTER TABLE ONLY " + rsFk.getString("definition") + ";\n\n");
-                }
-            }
-
-        } catch (SQLException | IOException e) {
-            throw new RuntimeException("Postgres backup failed: " + e.getMessage(), e);
         }
 
-        // Upload to remote and cleanup old backups
         rcloneUploadAndCleanup(backupFile);
-
         return backupFile.toString();
     }
 
-    private void rcloneUploadAndCleanup(Path backupFile) throws Exception {
-        String rcloneConfig = backupProperties.getRcloneConfigPath() != null
-                ? "--config " + backupProperties.getRcloneConfigPath() : "";
-        String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
+    // ---------------- INTERNAL METHODS ----------------
 
-        Process rcloneUpload = new ProcessBuilder("bash", "-c",
-                "rclone " + rcloneConfig + " copy " + backupFile + " " + remoteTarget)
-                .inheritIO().start();
-        rcloneUpload.waitFor();
+    private List<String> fetchPublicTables(Connection conn) throws SQLException {
+        List<String> tables = new ArrayList<>();
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT table_name FROM information_schema.tables " +
+                        "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' " +
+                        "ORDER BY table_name")) {
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    tables.add(rs.getString(1));
+                }
+            }
+        }
+        return tables;
+    }
+
+    private void backupTable(Connection conn, BufferedWriter writer, String table)
+            throws SQLException, IOException {
+
+        writer.write("-- ----------------------------\n");
+        writer.write("-- Table: " + table + "\n");
+        writer.write("-- ----------------------------\n");
+        writer.write("TRUNCATE TABLE " + table + " CASCADE;\n");
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM " + table)) {
+
+            ResultSetMetaData meta = rs.getMetaData();
+            int columnCount = meta.getColumnCount();
+
+            while (rs.next()) {
+                StringBuilder insert = new StringBuilder();
+                insert.append("INSERT INTO ").append(table).append(" VALUES (");
+
+                for (int i = 1; i <= columnCount; i++) {
+                    Object value = rs.getObject(i);
+
+                    if (value == null) {
+                        insert.append("NULL");
+                    } else if (value instanceof Number || value instanceof Boolean) {
+                        insert.append(value);
+                    } else {
+                        insert.append("'")
+                                .append(value.toString().replace("'", "''"))
+                                .append("'");
+                    }
+
+                    if (i < columnCount) insert.append(", ");
+                }
+                insert.append(");\n");
+                writer.write(insert.toString());
+            }
+        }
+        writer.write("\n");
+    }
+
+    private void rcloneUploadAndCleanup(Path backupFile) throws Exception {
+
+        String rcloneConfig = backupProperties.getRcloneConfigPath() != null
+                ? "--config " + backupProperties.getRcloneConfigPath()
+                : "";
+
+        String remoteTarget = backupProperties.getRemoteName()
+                + ":" + backupProperties.getRemoteFolder();
+
+        Process upload = new ProcessBuilder(
+                "bash", "-c",
+                "rclone " + rcloneConfig + " copy " +
+                        backupFile + " " + remoteTarget
+        ).inheritIO().start();
+
+        upload.waitFor();
 
         cleanupOldLocalBackups();
         cleanupOldRemoteBackups(rcloneConfig);
     }
 
-    private void cleanupOldLocalBackups() {
+    private void cleanupOldLocalBackups() throws IOException {
         Path dir = Path.of(backupProperties.getLocalDir());
         if (!Files.exists(dir)) return;
 
-        try {
-            Files.list(dir)
-                    .filter(Files::isRegularFile)
-                    .filter(f -> f.getFileName().toString().endsWith(".sql"))
-                    .forEach(f -> {
-                        try {
-                            long ageMillis = System.currentTimeMillis() - Files.getLastModifiedTime(f).toMillis();
-                            if (ageMillis > backupProperties.getRetentionDays() * 24L * 3600 * 1000) {
-                                Files.deleteIfExists(f);
-                                System.out.println("Deleted old local backup: " + f);
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+        long maxAgeMs = backupProperties.getRetentionDays()
+                * 24L * 60 * 60 * 1000;
+
+        Files.list(dir)
+                .filter(p -> p.getFileName().toString().endsWith(".sql"))
+                .forEach(p -> {
+                    try {
+                        if (System.currentTimeMillis()
+                                - Files.getLastModifiedTime(p).toMillis() > maxAgeMs) {
+                            Files.deleteIfExists(p);
                         }
-                    });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+                    } catch (Exception ignored) {
+                    }
+                });
     }
 
     private void cleanupOldRemoteBackups(String rcloneConfig) throws Exception {
-        String remoteTarget = backupProperties.getRemoteName() + ":" + backupProperties.getRemoteFolder();
-        String cmd = String.format("rclone %s delete --min-age %dd %s",
-                rcloneConfig, backupProperties.getRetentionDays(), remoteTarget);
-        Process rcloneDelete = new ProcessBuilder("bash", "-c", cmd).inheritIO().start();
-        rcloneDelete.waitFor();
+        String remoteTarget = backupProperties.getRemoteName()
+                + ":" + backupProperties.getRemoteFolder();
+
+        Process delete = new ProcessBuilder(
+                "bash", "-c",
+                "rclone " + rcloneConfig +
+                        " delete --min-age " +
+                        backupProperties.getRetentionDays() + "d " +
+                        remoteTarget
+        ).inheritIO().start();
+
+        delete.waitFor();
     }
 }
