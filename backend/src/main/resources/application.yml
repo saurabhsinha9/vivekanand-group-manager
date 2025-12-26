@@ -75,6 +75,11 @@ backup:
   retention-days: 7
   cron: "0 0 2 * * ?"   # Daily at 2 AM
 
+
+ping:
+  health:
+    url: https://vivekanand-manager-backend.onrender.com/actuator/health
+
 # -------------- Production profile (PostgreSQL) --------------
 ---
 spring:
