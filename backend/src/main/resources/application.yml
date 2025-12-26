@@ -105,6 +105,7 @@ spring:
     init:
       mode: never
 
+
 # -------------- Development profile (MySQL) --------------
 ---
 spring:
