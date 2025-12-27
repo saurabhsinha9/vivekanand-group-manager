@@ -1,156 +1,127 @@
-
 version: "1"
 
 projects:
   - name: Vivekanand-gayaji-prod
     environments:
       - name: Production
-        services:
 
-          # --- Backend (Spring Boot, Docker runtime) ---
+        services:
+          # --- Frontend (Static Site) ---
+          - type: web
+            name: vgm-fronend
+            runtime: static
+            repo: https://github.com/saurabhsinha9/vivekanand-group-manager
+            envVars:
+              - key: VITE_API_URL
+                sync: false           # (you can auto-wire this to the backend URL; see the optional variant below)
+            buildCommand: npm install && npm run build
+            staticPublishPath: dist
+            routes:
+              - type: rewrite
+                source: /*
+                destination: /index.html
+            autoDeployTrigger: commit
+            rootDir: frontend/
+
+          # --- Backend (Docker-based Web Service) ---
           - type: web
             name: vivekanand-manager-backend
             runtime: docker
-            plan: free
-            region: singapore
             repo: https://github.com/saurabhsinha9/vivekanand-group-manager
-            rootDir: backend
-            dockerContext: .
-            dockerfilePath: Dockerfile
-            healthCheckPath: /actuator/health
-            autoDeployTrigger: commit
+            plan: free
             envVars:
-              # DB creds sourced from the database resource (secure; no secrets in code)
-              - key: DB_URL
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: connectionString
-              - key: DB_USER
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: user
-              - key: DB_PASS
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: password
-
-              # Non-sensitive defaults
-              - key: SPRING_PROFILES_ACTIVE
-                value: prod
-              - key: SPRING_APP_NAME
-                value: Vivekanand-Manager
-              - key: PORT
-                value: "10000"
-              - key: SWAGGER_UI_PATH
-                value: /swagger-ui.html
-              - key: SPRINGDOC_API_ENABLED
-                value: "true"
+              - key: RCLONE_CONFIG          # all of these are placeholders; keep them in Dashboard or switch to auto-wiring DB_* below
+                sync: false
+              - key: STORAGE_PVR
+                sync: false
               - key: JPA_DDL_AUTO
-                value: update
-              - key: JPA_SHOW_SQL
-                value: "false"
-              - key: HIBERNATE_FORMAT_SQL
-                value: "true"
-              - key: MULTIPART_MAX_FILE_SIZE
-                value: 100MB
-              - key: MULTIPART_MAX_REQUEST_SIZE
-                value: 100MB
-              - key: UPLOAD_DIR
-                value: /app/uploads
+                sync: false
+              - key: WA_PROVIDER
+                sync: false
+              - key: WA_META_PHONE_ID
+                sync: false
+              - key: WA_META_ACCESS_TOKEN
+                sync: false
               - key: UPLOAD_MAX_MB
-                value: "100"
-
-              # Secrets injected from GitHub (do not commit values)
-              - key: CORS_ALLOWED_ORIGINS
+                sync: false
+              - key: UPLOAD_DIR
+                sync: false
+              - key: TWILIO_WHATSAPP_FROM
+                sync: false
+              - key: TWILIO_TOKEN
+                sync: false
+              - key: TWILIO_SID
+                sync: false
+              - key: SWAGGER_UI_PATH
+                sync: false
+              - key: SPRING_PROFILES_ACTIVE
+                sync: false
+              - key: SPRING_APP_NAME
+                sync: false
+              - key: SPRINGDOC_API_ENABLED
+                sync: false
+              - key: PORT
+                sync: false
+              - key: MULTIPART_MAX_REQUEST_SIZE
+                sync: false
+              - key: MULTIPART_MAX_FILE_SIZE
+                sync: false
+              - key: MAIL_USERNAME
+                sync: false
+              - key: MAIL_SMTP_STARTTLS_ENABLE
+                sync: false
+              - key: MAIL_SMTP_AUTH
+                sync: false
+              - key: MAIL_PORT
+                sync: false
+              - key: MAIL_PASSWORD
+                sync: false
+              - key: MAIL_HOST
+                sync: false
+              - key: JWT_SECRET
+                sync: false
+              - key: JWT_ISSUER
+                sync: false
+              - key: JWT_EXP_MINUTES
+                sync: false
+              - key: JPA_SHOW_SQL
+                sync: false
+              - key: HIBERNATE_FORMAT_SQL
+                sync: false
+              - key: EMAIL_PROVIDER
                 sync: false
               - key: EMAIL_API_URL
                 sync: false
               - key: EMAIL_API_KEY
                 sync: false
-              - key: JWT_SECRET
+              - key: DB_USER
                 sync: false
-              - key: CLOUDINARY_API_KEY
+              - key: DB_URL
                 sync: false
-              - key: CLOUDINARY_API_SECRET
+              - key: DB_PASS
+                sync: false
+              - key: CORS_ALLOWED_ORIGINS
+                sync: false
+              - key: CLOUDINARY_FOLDER
                 sync: false
               - key: CLOUDINARY_CLOUD_NAME
                 sync: false
-
-          # --- Frontend (Static Vite) ---
-          - type: web
-            name: vgm-fronend
-            runtime: static
-            plan: free
-            repo: https://github.com/saurabhsinha9/vivekanand-group-manager
-            rootDir: frontend/
-            buildCommand: npm install && npm run build
-            staticPublishPath: dist
-            autoDeployTrigger: commit
-            routes:
-              - type: rewrite
-                source: /*
-                destination: /index.html
-            envVars:
-              - key: VITE_API_URL
-                sync: false   # injected from GitHub Secrets before build
-
-          # --- Backup Cron (rclone → Google Drive) ---
-          - type: cron
-            name: vgm-db-backup-job
-            runtime: docker
-            plan: free
-            region: singapore
-            repo: https://github.com/saurabhsinha9/vivekanand-group-manager
-            rootDir: ops/backup
-            dockerContext: .
-            dockerfilePath: Dockerfile
-            schedule: "0 21 * * *"   # daily at 21:00 UTC (~02:30 IST next day)
-            envVars:
-              - key: DB_URL
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: connectionString
-              - key: DB_USER
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: user
-              - key: DB_PASS
-                fromDatabase:
-                  name: vivekanand-manager-db
-                  property: password
-              - key: RCLONE_CONFIG
+              - key: CLOUDINARY_API_SECRET
                 sync: false
-              - key: GDRIVE_REMOTE
+              - key: CLOUDINARY_API_KEY
                 sync: false
-              - key: BACKUP_RETENTION_DAYS
-                value: "14"
-
-          # --- Restore Worker (Docker; used by one-off job in rotation) ---
-          - type: worker
-            name: vgm-restore-worker
-            runtime: docker
-            plan: free
             region: singapore
-            repo: https://github.com/saurabhsinha9/vivekanand-group-manager
-            rootDir: ops/restore
+            healthCheckPath: /actuator/health
             dockerContext: .
             dockerfilePath: Dockerfile
             autoDeployTrigger: commit
-            envVars:
-              - key: RCLONE_CONFIG
-                sync: false
-              - key: GDRIVE_REMOTE
-                sync: false
-              # Set by rotation workflow on demand:
-              - key: NEW_DB_URL
-                sync: false
-              - key: NEW_DB_USER
-                sync: false
-              - key: NEW_DB_PASS
-                sync: false
+            rootDir: backend
 
         databases:
+          # --- Postgres Database ---
           - name: vivekanand-manager-db
+            databaseName: vivekanand_manager_db_m9hp
+            user: vivekanand_manager_db_user
             plan: free
             region: singapore
             ipAllowList:
